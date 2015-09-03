@@ -162,11 +162,11 @@ solve(Tableau) :-
     display_tableau(SolvedTableau).
 
 /* test
-5$0 +  $1 + 2$2 <= 20.
-2$0 + 2$1 + 6$2 <= 30.
-2$0 + 6$1 + 4$2 <= 40.
+5$0 +  $1 + 2$2 :<= 20.
+2$0 + 2$1 + 6$2 :<= 30.
+2$0 + 6$1 + 4$2 :<= 40.
 
-$0 + $1 + $2 => max.
+$0 + $1 + $2 :-> max.
 
 % http://www.bunkyo.ac.jp/~nemoto/lecture/or/99/simplex2.pdf
 2$0 + 3$1 :<= 6.
