@@ -55,10 +55,20 @@ zeros(N, List) :-
   * Example:
   *   $0 + $2 + $0 <= 1.2 ... register constraint: x[0] + x[2] + x[0] <= 1.2
   */
-:- op(700, xfx, <=).
-Expr <= Const :-
+:- op(700, xfx, :<=).
+Expr :<= Const :-
     expr_to_vector(Expr, Row),
-    assert(constraint(Row, Const)).
+    assert(constraint(le, Row, Const)).
+
+:- op(700, xfx, :>=).
+Expr :>= Const :-
+    expr_to_vector(Expr, Row),
+    assert(constraint(ge, Row, Const)).
+
+:- op(700, xfx, :==).
+Expr :== Const :-
+    expr_to_vector(Expr, Row),
+    assert(constraint(eq, Row, Const)).
 
 /** Maximize indicator. Left hand sides are expressions as objective functions
   * and right hand sides are nullary atoms 'max'.
@@ -69,22 +79,28 @@ Expr <= Const :-
   * The objective functions cannot contain 'leap' variables, that is,
   * all indices from 0 to the maximum index of variables.
   */
-:- op(700, xfx, =>).
-Objective => max :-
+:- op(700, xfx, :->).
+Objective :-> max :-
     expr_to_vector(Objective, Vec1),
     maplist(negate, Vec1, Vec2),
     append(Vec2, [0.0], Row),
     assert(tableau([Row])),
     run.
 
+Objective :-> min :-
+    expr_to_vector(Objective, Vec),
+    append(Vec, [0.0], Row),
+    assert(tableau([Row])),
+    run.
+
 negate(X, Y) :- Y is -X.
 
 run :-
-    constraint(Coeffs, Const),
+    constraint(Kind, Coeffs, Const),
     tableau(Tableau),
-    retract(constraint(Coeffs, Const)),
+    retract(constraint(Kind, Coeffs, Const)),
     retract(tableau(Tableau)),
-    add_constraint(Coeffs, Const, Tableau, NextTableau),
+    add_constraint(Kind, Coeffs, Const, Tableau, NextTableau),
     assert(tableau(NextTableau)),
     fail.
 
@@ -93,13 +109,35 @@ run :-
     solve(Tableau),
     retract(tableau(Tableau)).
 
-add_constraint(Coeffs, Const, [HdRow|Tl], NextTableau) :-
+add_constraint(le, Coeffs, Const, [HdRow|Tl], NextTableau) :-
     length(HdRow, Len),
     LenPred is Len - 1,
     stretch_by_zeros(LenPred, Coeffs, Vec),
     append(Vec, [1.0,Const], NewRow),
     stretch_tableau([HdRow|Tl], StretchedTableau),
     append(StretchedTableau, [NewRow], NextTableau).
+
+add_constraint(ge, Coeffs, Const, [HdRow|Tl], NextTableau) :-
+    M is 1.0e6,
+    length(HdRow, Len),
+    LenPred is Len - 1,
+    stretch_by_zeros(LenPred, Coeffs, Vec),
+    append(Vec, [-1.0,1.0,Const], NewRow),
+    stretch_tableau([HdRow|Tl], [HdRow1|Tl1]),
+    tuck(HdRow1, M, HdRow2),
+    stretch_tableau(Tl1, Tl2),
+    append([HdRow2|Tl2], [NewRow], NextTableau).
+
+add_constraint(eq, Coeffs, Const, [HdRow|Tl], NextTableau) :-
+    M is 1.0e6,
+    length(HdRow, Len),
+    LenPred is Len - 1,
+    stretch_by_zeros(LenPred, Coeffs, Vec),
+    append(Vec, [1.0,Const], NewRow),
+    tuck(HdRow, M, HdRow1),
+    stretch_tableau(Tl, Tl1),
+    append([HdRow1|Tl1], [NewRow], NextTableau).
+
 
 stretch_by_zeros(0, [], []) :- !.
 stretch_by_zeros(N, [Hd|Tl], List) :-
@@ -113,9 +151,11 @@ stretch_by_zeros(N, [], List) :-
 stretch_tableau(Old, New) :-
     maplist(tuck_zero, Old, New).
 
-tuck_zero([X], [0,X]).
-tuck_zero([X,Y1|Tl1], [X,Y2|Tl2]) :-
-    tuck_zero([Y1|Tl1], [Y2|Tl2]).
+tuck([X], N, [N,X]).
+tuck([X,Y1|Tl1], N, [X,Y2|Tl2]) :-
+    tuck([Y1|Tl1], N, [Y2|Tl2]).
+
+tuck_zero(L1, L2) :- tuck(L1, 0.0, L2).
 
 solve(Tableau) :-
     simplex(Tableau, SolvedTableau),
@@ -127,4 +167,17 @@ solve(Tableau) :-
 2$0 + 6$1 + 4$2 <= 40.
 
 $0 + $1 + $2 => max.
+
+% http://www.bunkyo.ac.jp/~nemoto/lecture/or/99/simplex2.pdf
+2$0 + 3$1 :<= 6.
+-5$0 + 9$1 :== 15.
+-6$0 + 3$1 :>= 3.
+-6$0 + 6$1 :-> max.
+
+tableau([
+  [6.0, -6, 0.0, 0.0, -1000000.0, 0.0, -1000000.0, 0.0],
+  [2.0, 3, 1.0, 0.0, 0.0, 0.0, 0.0, 6],
+  [-5.0, 9, 0.0, -1.0, 1.0, 0.0, 0.0, 15],
+  [-6.0, 3, 0.0, 0.0, 0.0, -1.0, 1.0, 3]
+]).
 */
