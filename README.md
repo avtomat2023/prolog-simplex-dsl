@@ -16,20 +16,20 @@ subject to:
   
 enter the following code in SWI-Prolog.
   
-```prolog
+```
 ?- [dsl, solve].
 true.
 
-?- 5$0 + $1 + 2$2 <= 20.
+?- 5$0 + $1 + 2$2 :<= 20.
 true.
 
-?- 2$0 + 2$1 + 6$2 <= 30.
+?- 2$0 + 2$1 + 6$2 :<= 30.
 true.
 
-?- 2$0 + 6$1 + 4$2 <= 40.
+?- 2$0 + 6$1 + 4$2 :<= 40.
 true.
 
-?- $0 + $1 + $2 => max.
+?- $0 + $1 + $2 :=> max.
 Value of objective function: 9.000000000000002
 $0 = 1.9999999999999996
 $2 = 4.0
